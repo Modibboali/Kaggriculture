@@ -8,11 +8,13 @@ backward-compatible ``GameState.from_observation`` shim) knows the raw
 observation format.
 """
 
+from .kaggle_action_serializer import to_kaggle_action
 from .kaggle_observation_adapter import KaggleObservationAdapter
 from .observation_validation import InvalidObservationError, validate_observation
 
 __all__ = [
     "InvalidObservationError",
     "KaggleObservationAdapter",
+    "to_kaggle_action",
     "validate_observation",
 ]
