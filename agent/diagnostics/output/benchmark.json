@@ -1,0 +1,31 @@
+{
+  "probe": "benchmark",
+  "success": true,
+  "summary": "creation=22.1/s, steps=257.4/s, peak mem=1.5 MiB",
+  "details": {
+    "creation_per_sec": 22.1,
+    "creation_avg_s": 0.045282,
+    "full_run_ok": true,
+    "full_run_detail": "completed",
+    "full_run_steps": 720,
+    "full_run_s": 2.797618,
+    "steps_per_sec": 257.4,
+    "avg_step_s": 0.003886,
+    "peak_memory_run_bytes": 1525053,
+    "clone_ok": true,
+    "clone_s": 3.115195,
+    "clone_per_sec": 0.3,
+    "pickle_ok": true,
+    "pickle_dump_s": 0.229863,
+    "pickle_size_bytes": 3353454,
+    "native_clone_ok": true,
+    "native_clone_s": 0.291109,
+    "native_clone_per_sec": 3.4,
+    "replay_json_ok": true,
+    "replay_json_len": 4281174,
+    "replay_json_s": 1.57987
+  },
+  "duration_s": 10.719831,
+  "errors": [],
+  "mcts_verdict": null
+}

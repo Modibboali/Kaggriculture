@@ -2,8 +2,9 @@
 
 This package deliberately contains no game rules, no search, and no Kaggle
 environment calls: it only defines the immutable value objects a future
-MuZero / AlphaZero-style planner will operate on. The single
-environment-aware entry point is ``GameState.from_observation``.
+MuZero / AlphaZero-style planner will operate on. Kaggle observations are
+translated into these value objects by :mod:`agent.environment` (see
+:class:`agent.environment.kaggle_observation_adapter.KaggleObservationAdapter`).
 """
 
 from .enums import (

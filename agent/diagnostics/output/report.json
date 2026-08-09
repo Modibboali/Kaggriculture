@@ -1,0 +1,298 @@
+{
+  "environment": "kaggriculture",
+  "timestamp": "2026-08-07T13:10:39+00:00",
+  "results": [
+    {
+      "probe": "environment_creation",
+      "success": true,
+      "summary": "created 'kaggriculture' in 0.4301s, peak 0.2 MiB; simultaneous envs: True",
+      "details": {
+        "installed": true,
+        "creation_time_s": 0.430087,
+        "peak_memory_bytes": 178149,
+        "env_type": "Environment",
+        "multiple_simultaneous": true,
+        "multiple_detail": "ok (list)",
+        "multiple_created": 3,
+        "env.name": "kaggriculture",
+        "env.agents": "Struct(len=3)",
+        "env.configuration": "Struct(len=15)",
+        "env.specification": "Struct(len=11)"
+      },
+      "duration_s": 2.397124,
+      "errors": [],
+      "mcts_verdict": true
+    },
+    {
+      "probe": "stepping",
+      "success": true,
+      "summary": "step(): dict=True, callable=True; 224.2 steps/sec @1000",
+      "details": {
+        "has_step": true,
+        "has_run": true,
+        "has_act": false,
+        "has_reset": true,
+        "has_toJSON": true,
+        "has_render": true,
+        "has_clone": true,
+        "has_play": true,
+        "has_train": true,
+        "step_dict_actions": true,
+        "step_dict_detail": "ok (list)",
+        "steps_after_step": 2,
+        "step_callable_actions": true,
+        "step_callable_detail": "ok (list)",
+        "run_100_steps_s": 0.411511,
+        "run_100_steps_per_s": 243.0,
+        "run_1000_steps_s": 4.460935,
+        "run_1000_steps_per_s": 224.2,
+        "avg_step_s": 0.004461
+      },
+      "duration_s": 5.040207,
+      "errors": [],
+      "mcts_verdict": true
+    },
+    {
+      "probe": "cloning",
+      "success": true,
+      "summary": "clone support: env.clone=True, copy.copy=True, copy.deepcopy=True, pickle=True, cloudpickle=True",
+      "details": {
+        "cloudpickle_installed": true,
+        "clones": {
+          "env.clone": {
+            "ok": true,
+            "result_type": "Environment",
+            "same_type_as_env": true
+          },
+          "copy.copy": {
+            "ok": true,
+            "result_type": "Environment",
+            "same_type_as_env": true
+          },
+          "copy.deepcopy": {
+            "ok": true,
+            "result_type": "Environment",
+            "same_type_as_env": true
+          },
+          "pickle": {
+            "ok": true,
+            "result_type": "Environment",
+            "same_type_as_env": true
+          },
+          "cloudpickle": {
+            "ok": true,
+            "result_type": "Environment",
+            "same_type_as_env": true
+          }
+        },
+        "any_clone_works": true
+      },
+      "duration_s": 0.104872,
+      "errors": [],
+      "mcts_verdict": true
+    },
+    {
+      "probe": "serialization",
+      "success": true,
+      "summary": "pickle roundtrip=True, replay_json=True",
+      "details": {
+        "pickle": {
+          "ok": true,
+          "size_bytes": 24699,
+          "dump_s": 0.001433,
+          "load_s": 0.000525,
+          "restore_ok": true,
+          "throughput_bytes_per_s": 12612469.9
+        },
+        "cloudpickle_installed": true,
+        "cloudpickle": {
+          "ok": true,
+          "size_bytes": 24699,
+          "dump_s": 0.003511,
+          "load_s": 0.000386,
+          "restore_ok": true,
+          "throughput_bytes_per_s": 6337464.4
+        },
+        "toJSON_metadata": {
+          "ok": true,
+          "is_dict": true,
+          "s": 0.017633
+        },
+        "replay_json": {
+          "ok": true,
+          "size_bytes": 23036,
+          "s": 0.00911,
+          "steps": 4
+        },
+        "any_roundtrip_works": true
+      },
+      "duration_s": 0.08637,
+      "errors": [],
+      "mcts_verdict": true
+    },
+    {
+      "probe": "observations",
+      "success": true,
+      "summary": "found 13 public attributes; history accessible: True",
+      "details": {
+        "public_attributes": {
+          "agents": "Struct(len=3)",
+          "configuration": "Struct(len=15)",
+          "debug": "bool",
+          "done": "bool",
+          "id": "str(len=36)",
+          "info": "dict(len=1)",
+          "logs": "list(len=4)",
+          "name": "str(len=13)",
+          "pool": "NoneType",
+          "specification": "Struct(len=11)",
+          "state": "list(len=2)",
+          "steps": "list(len=4)",
+          "version": "str(len=5)"
+        },
+        "state_shape": "list(len=2)",
+        "num_players": 2,
+        "state0_keys": [
+          "action",
+          "reward",
+          "info",
+          "observation",
+          "status"
+        ],
+        "observation0_keys": [
+          "remainingOverageTime",
+          "step",
+          "player",
+          "farms",
+          "private",
+          "market",
+          "town",
+          "day",
+          "hour"
+        ],
+        "observation0_private_keys": [
+          "shed",
+          "seeds",
+          "inventories"
+        ],
+        "history_attr": "list(len=4)",
+        "history_len": 4,
+        "attr.configuration": "Struct(len=15)",
+        "attr.agents": "Struct(len=3)",
+        "attr.specification": "Struct(len=11)",
+        "attr.name": "kaggriculture"
+      },
+      "duration_s": 0.055256,
+      "errors": [],
+      "mcts_verdict": true
+    },
+    {
+      "probe": "actions",
+      "success": true,
+      "summary": "arbitrary actions accepted=True; both players independently controllable=True; p0 seeds after buy=1",
+      "details": {
+        "step_accepted": true,
+        "step_detail": "ok (list)",
+        "p0_seeds_after_p0_buy": 1,
+        "p1_seeds_after_p0_buy": 0,
+        "p1_independent": true,
+        "p1_detail": "ok (list)",
+        "p1_seeds_after_p1_buy": 1,
+        "p0_seeds_after_p1_buy": 1,
+        "both_simultaneous": true,
+        "mixed_agent_types": true,
+        "both_players_controllable": true
+      },
+      "duration_s": 0.065371,
+      "errors": [],
+      "mcts_verdict": true
+    },
+    {
+      "probe": "replay",
+      "success": true,
+      "summary": "replay during=True, after=True; replay is env.steps (toJSON() is metadata)",
+      "details": {
+        "steps_during": 6,
+        "replay_during": true,
+        "tojson_ok": true,
+        "tojson_detail": "ok (dict)",
+        "tojson_is_dict": true,
+        "tojson_keys": [
+          "id",
+          "name",
+          "title",
+          "description",
+          "version",
+          "module_version",
+          "configuration",
+          "specification",
+          "steps",
+          "rewards",
+          "statuses",
+          "schema_version",
+          "info"
+        ],
+        "full_run_ok": true,
+        "full_run_detail": "ran to completion",
+        "steps_after": 720,
+        "replay_after": true,
+        "step0_keys": [
+          "action",
+          "reward",
+          "info",
+          "observation",
+          "status"
+        ],
+        "render_json": true,
+        "render_json_detail": "ok (str)"
+      },
+      "duration_s": 4.653667,
+      "errors": [],
+      "mcts_verdict": true
+    },
+    {
+      "probe": "determinism",
+      "success": true,
+      "summary": "same seed identical (deterministic agent) = True",
+      "details": {
+        "same_seed_identical": true,
+        "different_seed_differs": true,
+        "random_agent_same_seed_identical": false
+      },
+      "duration_s": 1.806373,
+      "errors": [],
+      "mcts_verdict": true
+    },
+    {
+      "probe": "benchmark",
+      "success": true,
+      "summary": "creation=22.1/s, steps=257.4/s, peak mem=1.5 MiB",
+      "details": {
+        "creation_per_sec": 22.1,
+        "creation_avg_s": 0.045282,
+        "full_run_ok": true,
+        "full_run_detail": "completed",
+        "full_run_steps": 720,
+        "full_run_s": 2.797618,
+        "steps_per_sec": 257.4,
+        "avg_step_s": 0.003886,
+        "peak_memory_run_bytes": 1525053,
+        "clone_ok": true,
+        "clone_s": 3.115195,
+        "clone_per_sec": 0.3,
+        "pickle_ok": true,
+        "pickle_dump_s": 0.229863,
+        "pickle_size_bytes": 3353454,
+        "native_clone_ok": true,
+        "native_clone_s": 0.291109,
+        "native_clone_per_sec": 3.4,
+        "replay_json_ok": true,
+        "replay_json_len": 4281174,
+        "replay_json_s": 1.57987
+      },
+      "duration_s": 10.719831,
+      "errors": [],
+      "mcts_verdict": null
+    }
+  ]
+}

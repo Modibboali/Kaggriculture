@@ -2,3 +2,15 @@
 python_version = "3.12"
 strict = true
 files = ["agent"]
+
+# The official environment and cloudpickle ship without type stubs; the
+# diagnostics package only touches them through a thin, runtime-probed API.
+[[tool.mypy.overrides]]
+module = ["kaggle_environments", "kaggle_environments.*", "cloudpickle", "pytest"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["agent/environment"]
+markers = [
+    "integration: tests that launch the real Kaggle environment (skipped when unavailable)",
+]
