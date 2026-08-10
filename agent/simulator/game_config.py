@@ -151,6 +151,7 @@ class GameConfig:
     weed_spawn_chance: float = 0.005
     price_floor: int = PRICE_FLOOR
     seed: int = 1
+    episode_steps: int = 720
     crops: Mapping[CropType, CropSpec] = field(default_factory=lambda: DEFAULT_CROPS)
     market_params: Mapping[ItemType, MarketParam] = field(
         default_factory=lambda: DEFAULT_MARKET_PARAMS
