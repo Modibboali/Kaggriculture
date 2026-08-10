@@ -182,6 +182,9 @@ def _validate_animal_structure(tile: Mapping[str, Any], path: str) -> None:
     animal = tile.get("animal")
     if animal is not None and not isinstance(animal, str):
         _fail(f"{path}.animal", "must be a string animal name or null")
+    # Empty structures (no animal) carry no animal fields.
+    if animal is None:
+        return
     for key in ("placed_day", "yield_units", "consecutive_unfed", "pending_care_bonus"):
         value = tile.get(key)
         if not _is_int(value):

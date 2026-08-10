@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Mapping
 
-from ..state import AnimalType, CropType, ItemType, ShopType
+from ..state import AnimalType, CropType, ItemType, Quadrant, ShopType, StructureType
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,6 +70,25 @@ ANIMAL_COST: Mapping[AnimalType, int] = {
     AnimalType.SHEEP: 500,
 }
 
+
+@dataclass(frozen=True, slots=True)
+class AnimalSpec:
+    """Per-animal production parameters (from the environment's ANIMALS table)."""
+
+    cost: int
+    structure: StructureType
+    first_yield_day: int
+    interval: int
+    max_held: int
+    product: ItemType
+
+
+DEFAULT_ANIMALS: Mapping[AnimalType, AnimalSpec] = {
+    AnimalType.GOOSE: AnimalSpec(300, StructureType.COOP, 4, 1, 4, ItemType.EGG),
+    AnimalType.COW: AnimalSpec(400, StructureType.PASTURE, 8, 2, 6, ItemType.MILK),
+    AnimalType.SHEEP: AnimalSpec(500, StructureType.PASTURE, 6, 3, 6, ItemType.WOOL),
+}
+
 # Tradable products on the market (excludes animals and seeds).
 PRODUCT_ITEMS: tuple[ItemType, ...] = (
     ItemType.WHEAT,
@@ -105,6 +124,16 @@ SHOPS: Mapping[ShopType, tuple[ItemType, ...]] = {
 # Town-center demand schedule: (day_threshold, multiplier), highest first.
 TOWN_CENTER_SCHEDULE: tuple[tuple[int, int], ...] = ((20, 4), (10, 2), (0, 1))
 
+# Land expansion order and prices (fixed game constants, verified).
+# NW is always unlocked; BUY_LAND buys the next quadrant in this order,
+# regardless of the quadrant named in the action.
+LAND_ORDER: tuple[Quadrant, ...] = (
+    Quadrant.NE,
+    Quadrant.SW,
+    Quadrant.SE,
+)
+LAND_PRICES: tuple[int, ...] = (1000, 2000, 4000)
+
 
 @dataclass(frozen=True, slots=True)
 class GameConfig:
@@ -121,7 +150,11 @@ class GameConfig:
     town_shop_unlock_interval: int = 3
     weed_spawn_chance: float = 0.005
     price_floor: int = PRICE_FLOOR
+    seed: int = 1
     crops: Mapping[CropType, CropSpec] = field(default_factory=lambda: DEFAULT_CROPS)
     market_params: Mapping[ItemType, MarketParam] = field(
         default_factory=lambda: DEFAULT_MARKET_PARAMS
+    )
+    animals: Mapping[AnimalType, AnimalSpec] = field(
+        default_factory=lambda: DEFAULT_ANIMALS
     )

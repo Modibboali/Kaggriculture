@@ -21,40 +21,52 @@ from agent.testing.differential import DifferentialRunner, SCENARIO_PASS  # noqa
 
 pytestmark = pytest.mark.integration
 
-SIM_STEPS = 2000
+SIM_STEPS = 20_000
 KAGGLE_STEPS = 100
 
 
-def _simulator_rate(steps: int = SIM_STEPS) -> float:
+def _simulator_rate(steps: int = SIM_STEPS, trials: int = 3) -> float:
     simulator = Simulator()
     state = DifferentialRunner().run_kaggle(SCENARIO_PASS).initial_state
     action = TurnAction()
-    start = time.perf_counter()
-    for _ in range(steps):
+    for _ in range(200):  # warmup (also reaches past the first day boundary)
         state = simulator.apply(state, action)
-    elapsed = time.perf_counter() - start
-    return steps / elapsed
+    best = 0.0
+    for _ in range(trials):
+        current = state
+        start = time.perf_counter()
+        for _ in range(steps):
+            current = simulator.apply(current, action)
+        elapsed = time.perf_counter() - start
+        best = max(best, steps / elapsed)
+    return best
 
 
-def _kaggle_rate(steps: int = KAGGLE_STEPS) -> float:
+def _kaggle_rate(steps: int = KAGGLE_STEPS, trials: int = 3) -> float:
     import kaggle_environments
 
-    env = kaggle_environments.make(
-        "kaggriculture",
-        configuration={"episodeSteps": 720, "seed": 1},
-        debug=True,
-    )
     action = [to_kaggle_action(TurnAction()), to_kaggle_action(TurnAction())]
-    start = time.perf_counter()
-    for _ in range(steps):
-        env.step(action)
-    elapsed = time.perf_counter() - start
-    return steps / elapsed
+    best = 0.0
+    for _ in range(trials):
+        env = kaggle_environments.make(
+            "kaggriculture",
+            configuration={"episodeSteps": 720, "seed": 1},
+            debug=True,
+        )
+        start = time.perf_counter()
+        for _ in range(steps):
+            env.step(action)
+        elapsed = time.perf_counter() - start
+        best = max(best, steps / elapsed)
+    return best
 
 
 def test_simulator_is_faster_than_kaggle() -> None:
     sim_rate = _simulator_rate()
     kaggle_rate = _kaggle_rate()
+    print(f"\nsimulator: {sim_rate:.1f} turns/s")
+    print(f"kaggle:    {kaggle_rate:.1f} turns/s")
+    print(f"speedup:   {sim_rate / kaggle_rate:.1f}x")
     assert sim_rate > kaggle_rate, (
         f"simulator {sim_rate:.1f} turns/s should beat Kaggle "
         f"{kaggle_rate:.1f} turns/s"

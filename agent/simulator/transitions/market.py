@@ -11,9 +11,9 @@ A faithful port of the official environment's market engine:
   players' order queues (quote both, then commit both, per unit), with prices
   recomputed on the fly so later units see earlier commits.
 
-HIRE and BUY_LAND (workers / land) are not yet implemented: they are handled as
-silent no-ops exactly like the environment's handling of illegal orders, and
-the first verified transition layer's scenarios never submit them.
+HIRE (workers) is not yet implemented and is handled as a silent no-op exactly
+like the environment's handling of illegal orders. BUY_LAND is an atomic order
+delegated to :class:`~agent.simulator.transitions.land.LandTransition`.
 
 Known, documented limitation: the domain ``Inventory`` value object drops
 non-positive counts, so market inventories that the environment drives to 0 or
@@ -53,6 +53,8 @@ from ..game_config import (
     SHOPS,
     TOWN_CENTER_SCHEDULE,
 )
+from .land import LandTransition
+from .workers import WorkerTransition
 
 # Town-center products: every product except FERTILIZER.
 TOWN_CENTER_PRODUCTS = tuple(item for item in PRODUCT_ITEMS if item != ItemType.FERTILIZER)
@@ -88,8 +90,15 @@ class _OrderState:
 class MarketTransition:
     """Pricing, town demand, and lockstep order processing."""
 
-    def __init__(self, config: GameConfig) -> None:
+    def __init__(
+        self,
+        config: GameConfig,
+        land: LandTransition | None = None,
+        workers: WorkerTransition | None = None,
+    ) -> None:
         self._config = config
+        self._land = land if land is not None else LandTransition(config)
+        self._workers = workers if workers is not None else WorkerTransition(config)
 
     # -- pricing ------------------------------------------------------------
 
@@ -188,9 +197,20 @@ class MarketTransition:
                 queues[1][index] if index < len(queues[1]) else None,
             ]
 
-            # Atomic orders (HIRE, BUY_LAND) are not implemented: no-op them.
+            # Atomic orders: HIRE (workers) hires a hand; BUY_LAND purchases the
+            # next land in order, in player order, before the SELL/BUY lockstep.
             for player_id, ostate in enumerate(order_states):
-                if ostate is not None and ostate.op in ("HIRE", "BUY_LAND"):
+                if ostate is None:
+                    continue
+                if ostate.op == "HIRE":
+                    state, monies[player_id] = self._workers.hire(
+                        state, player_id, monies[player_id]
+                    )
+                    order_states[player_id] = None
+                elif ostate.op == "BUY_LAND":
+                    state, monies[player_id] = self._land.buy_land(
+                        state, player_id, monies[player_id]
+                    )
                     order_states[player_id] = None
 
             # Per-unit lockstep: quote both players, then commit both.

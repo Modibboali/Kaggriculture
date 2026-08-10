@@ -17,12 +17,14 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from ...actions import PlantAction, TurnAction, WaterAction
+from ...actions import PASS, PlantAction, TurnAction, WaterAction
 from ...state import (
+    CropType,
     EmptyTile,
     GameState,
     PlantState,
     PlantTile,
+    Seeds,
 )
 from ..game_config import GameConfig
 from . import with_player, worker_by_id
@@ -35,10 +37,34 @@ class FarmingTransition:
         self._config = config
 
     def apply(self, state: GameState, player: int, turn_action: TurnAction) -> GameState:
-        state = self._apply_unit(state, player, 0, turn_action.farmer_action)
+        # Atomic PLANT validation (mirrors the interpreter): if the total PLANT
+        # demand for a crop across farmer + hands exceeds the seeds available at
+        # the start of the turn, every PLANT request for that crop is dropped.
+        blocked = self._blocked_plants(state.players[player].seeds, turn_action)
+        state = self._apply_unit(
+            state, player, 0, self._allow_plant(turn_action.farmer_action, blocked)
+        )
         for index, action in enumerate(turn_action.worker_actions):
-            state = self._apply_unit(state, player, index + 1, action)
+            state = self._apply_unit(
+                state, player, index + 1, self._allow_plant(action, blocked)
+            )
         return state
+
+    @staticmethod
+    def _blocked_plants(seeds: Seeds, turn_action: TurnAction) -> frozenset[CropType]:
+        demand: dict[CropType, int] = {}
+        for action in (turn_action.farmer_action, *turn_action.worker_actions):
+            if isinstance(action, PlantAction):
+                demand[action.crop] = demand.get(action.crop, 0) + 1
+        return frozenset(
+            crop for crop, count in demand.items() if count > seeds.get(crop)
+        )
+
+    @staticmethod
+    def _allow_plant(action: object, blocked: frozenset[CropType]) -> object:
+        if isinstance(action, PlantAction) and action.crop in blocked:
+            return PASS
+        return action
 
     def _apply_unit(
         self,
