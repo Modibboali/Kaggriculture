@@ -10,13 +10,15 @@ the experiment harness: random, greedy-heuristic, and a minimal starter.
 from __future__ import annotations
 
 import random
+from dataclasses import replace
 from typing import Any, Protocol
 
 from ..actions import TurnAction
 from ..environment import KaggleObservationAdapter, to_kaggle_action
 from ..simulator import GameConfig
+from ..state import GameState
 from .action_generator import ActionGenerator
-from .evaluation import Evaluator
+from .evaluation import EvaluationConfig, Evaluator, HorizonAwareEvaluator
 from .mcts import MCTS, MCTSConfig
 from .rollout import HeuristicRolloutPolicy, RandomRolloutPolicy
 from .search_state import SearchState
@@ -25,19 +27,35 @@ from .terminal import Terminal
 
 
 class Agent(Protocol):
-    """Chooses an action dict from a raw observation."""
+    """Chooses an action dict from a raw observation (and can select from a
+    domain state directly for simulator-based play)."""
 
     def choose(self, observation: dict[str, Any]) -> dict[str, Any]: ...
+
+    def select(self, game: GameState, player: int) -> TurnAction: ...
+
+
+def _as_player(game: GameState, player: int) -> GameState:
+    """The same state with ``current_player`` set to ``player`` (no copy when
+    it already matches). Search transitions act on ``current_player``, so each
+    agent must see the state from its own perspective."""
+    if game.current_player == player:
+        return game
+    return replace(game, current_player=player)
 
 
 class _Components:
     """Shared search components for one agent."""
 
-    def __init__(self, config: GameConfig | None = None) -> None:
+    def __init__(
+        self,
+        config: GameConfig | None = None,
+        evaluator: Evaluator | HorizonAwareEvaluator | None = None,
+    ) -> None:
         self.config = config if config is not None else GameConfig()
         self.adapter = SimulatorAdapter()
         self.generator = ActionGenerator(self.config)
-        self.evaluator = Evaluator(self.config)
+        self.evaluator = evaluator if evaluator is not None else Evaluator(self.config)
         self.terminal = Terminal(self.config)
 
 
@@ -50,9 +68,13 @@ class MCTSAgent:
         *,
         config: GameConfig | None = None,
         rollout: Any = None,
+        evaluator: Evaluator | HorizonAwareEvaluator | None = None,
+        eval_config: EvaluationConfig | None = None,
         seed: int = 0,
     ) -> None:
-        self._components = _Components(config)
+        self._components = _Components(config, evaluator)
+        if evaluator is None and eval_config is not None:
+            self._components.evaluator = HorizonAwareEvaluator(self._components.config, eval_config)
         self._components.adapter = SimulatorAdapter(count_transitions=True)
         mcts_config = mcts_config if mcts_config is not None else MCTSConfig(seed=seed)
         if rollout is None:
@@ -85,18 +107,22 @@ class MCTSAgent:
             "simulator_transitions": float(self._components.adapter.transitions),
         }
 
-    def choose(self, observation: dict[str, Any]) -> dict[str, Any]:
+    def select(self, game: GameState, player: int) -> TurnAction:
+        """Search from a domain state (no observation parsing)."""
         import time as _time
 
-        game = KaggleObservationAdapter.from_observation(observation)
+        game = _as_player(game, player)
         state = SearchState(game)
-        player = state.current_player
         start = _time.perf_counter()
         action = self._mcts.search(state, player)
         self._search_time += _time.perf_counter() - start
         self._actions_chosen += 1
         self._last_action = action
-        return to_kaggle_action(action)
+        return action
+
+    def choose(self, observation: dict[str, Any]) -> dict[str, Any]:
+        game = KaggleObservationAdapter.from_observation(observation)
+        return to_kaggle_action(self.select(game, game.current_player))
 
 
 class RandomAgent:
@@ -106,11 +132,14 @@ class RandomAgent:
         self._components = _Components(config)
         self._rng = random.Random(seed)
 
+    def select(self, game: GameState, player: int) -> TurnAction:
+        game = _as_player(game, player)
+        state = SearchState(game)
+        return self._rng.choice(self._components.generator.generate(state))
+
     def choose(self, observation: dict[str, Any]) -> dict[str, Any]:
         game = KaggleObservationAdapter.from_observation(observation)
-        state = SearchState(game)
-        action = self._rng.choice(self._components.generator.generate(state))
-        return to_kaggle_action(action)
+        return to_kaggle_action(self.select(game, game.current_player))
 
 
 class HeuristicAgent:
@@ -121,11 +150,14 @@ class HeuristicAgent:
         self._rng = random.Random(seed)
         self._policy = HeuristicRolloutPolicy(self._components.generator)
 
+    def select(self, game: GameState, player: int) -> TurnAction:
+        game = _as_player(game, player)
+        state = SearchState(game)
+        return self._policy.choose(state, self._rng)
+
     def choose(self, observation: dict[str, Any]) -> dict[str, Any]:
         game = KaggleObservationAdapter.from_observation(observation)
-        state = SearchState(game)
-        action = self._policy.choose(state, self._rng)
-        return to_kaggle_action(action)
+        return to_kaggle_action(self.select(game, game.current_player))
 
 
 class StarterAgent:
@@ -135,7 +167,7 @@ class StarterAgent:
         del seed
         self._components = _Components(config)
 
-    def choose(self, observation: dict[str, Any]) -> dict[str, Any]:
+    def select(self, game: GameState, player: int) -> TurnAction:
         from ..actions import (
             BuySeedAction,
             HarvestAction,
@@ -146,22 +178,24 @@ class StarterAgent:
         )
         from ..state import CropType, EmptyTile, ItemType, PlantTile
 
-        game = KaggleObservationAdapter.from_observation(observation)
-        player = game.current_player
         ps = game.players[player]
         farm = ps.farm
         tile = farm.tile_at(farm.farmer.position)
 
         if isinstance(tile, PlantTile):
             if not tile.plant.watered_today:
-                return to_kaggle_action(TurnAction(farmer_action=WaterAction()))
+                return TurnAction(farmer_action=WaterAction())
             spec = self._components.config.crops[tile.plant.crop]
             if tile.plant.yield_units > 0 and game.day - tile.plant.planted_day >= spec.first_yield_day:
-                return to_kaggle_action(TurnAction(farmer_action=HarvestAction()))
+                return TurnAction(farmer_action=HarvestAction())
         if isinstance(tile, EmptyTile) and ps.seeds.get(CropType.WHEAT) > 0:
-            return to_kaggle_action(TurnAction(farmer_action=PlantAction(crop=CropType.WHEAT)))
+            return TurnAction(farmer_action=PlantAction(crop=CropType.WHEAT))
         if ps.inventory.get(ItemType.WHEAT) > 0:
-            return to_kaggle_action(TurnAction(market_actions=(SellAction(item=ItemType.WHEAT, quantity=1),)))
+            return TurnAction(market_actions=(SellAction(item=ItemType.WHEAT, quantity=1),))
         if farm.money >= self._components.config.crops[CropType.WHEAT].seed_cost:
-            return to_kaggle_action(TurnAction(market_actions=(BuySeedAction(crop=CropType.WHEAT, quantity=1),)))
-        return to_kaggle_action(TurnAction())
+            return TurnAction(market_actions=(BuySeedAction(crop=CropType.WHEAT, quantity=1),))
+        return TurnAction()
+
+    def choose(self, observation: dict[str, Any]) -> dict[str, Any]:
+        game = KaggleObservationAdapter.from_observation(observation)
+        return to_kaggle_action(self.select(game, game.current_player))

@@ -20,7 +20,7 @@ from collections.abc import Callable
 
 from ..actions import TurnAction
 from .action_generator import ActionGenerator
-from .evaluation import Evaluator
+from .evaluation import Evaluator, HorizonAwareEvaluator
 from .mcts import MCTS, MCTSConfig
 from .rollout import HeuristicRolloutPolicy
 from .search_state import SearchState
@@ -61,6 +61,7 @@ def benchmark(
     adapter = SimulatorAdapter(count_transitions=True)
     generator = ActionGenerator(game_config)
     evaluator = Evaluator(game_config)
+    horizon_evaluator = HorizonAwareEvaluator(game_config)
     terminal = Terminal(game_config)
     rollout = HeuristicRolloutPolicy(generator)
 
@@ -94,14 +95,21 @@ def benchmark(
     count, elapsed = _measure(hashing, seconds)
     results["state_hashes_per_sec"] = _rate(count, elapsed)
 
-    # Evaluation/sec.
+    # Classic evaluation/sec.
     def eval_() -> None:
         evaluator.evaluate(state, 0)
 
     count, elapsed = _measure(eval_, seconds)
     results["evaluations_per_sec"] = _rate(count, elapsed)
 
-    # MCTS throughput.
+    # Horizon-aware evaluation/sec (same state).
+    def eval_h() -> None:
+        horizon_evaluator.evaluate(state, 0)
+
+    count, elapsed = _measure(eval_h, seconds)
+    results["horizon_evaluations_per_sec"] = _rate(count, elapsed)
+
+    # MCTS throughput with the horizon-aware evaluator (the production config).
     iterations = mcts_iterations
     mcts = MCTS(
         MCTSConfig(iterations=iterations, max_simulation_steps=12, seed=0),
@@ -109,7 +117,7 @@ def benchmark(
         generate=generator.generate,
         is_terminal=terminal.is_terminal,
         terminal_value=terminal.value,
-        evaluate=evaluator.evaluate,
+        evaluate=horizon_evaluator.evaluate,
         rollout=rollout.choose,
         rng=random.Random(0),
     )

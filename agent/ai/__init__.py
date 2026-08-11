@@ -11,11 +11,26 @@ from __future__ import annotations
 
 from .action_generator import ActionGenerator
 from .agent import HeuristicAgent, MCTSAgent, RandomAgent, StarterAgent
-from .evaluation import EvaluationConfig, Evaluator
+from .evaluation import (
+    EvaluationConfig,
+    Evaluator,
+    HorizonAwareEvaluator,
+    evaluate,
+    evaluate_horizon,
+    horizon_days,
+    horizon_remaining,
+)
 from .experiment import EpisodeResult, MatchupResult, play_episode, run_matchup
 from .mcts import MCTS, MCTSConfig, MCTSNode, NoTranspositionTable, TranspositionTable
 from .rollout import HeuristicRolloutPolicy, RandomRolloutPolicy, RolloutPolicy
 from .search_state import SearchState, state_key
+from .sim_experiment import (
+    SimEpisodeResult,
+    SimMatchupResult,
+    initial_state,
+    play_sim_episode,
+    run_sim_matchup,
+)
 from .simulator_adapter import SimulatorAdapter
 from .terminal import Terminal
 
@@ -26,6 +41,7 @@ __all__ = [
     "Evaluator",
     "HeuristicAgent",
     "HeuristicRolloutPolicy",
+    "HorizonAwareEvaluator",
     "MCTS",
     "MCTSConfig",
     "MCTSNode",
@@ -36,11 +52,20 @@ __all__ = [
     "RandomRolloutPolicy",
     "RolloutPolicy",
     "SearchState",
+    "SimEpisodeResult",
+    "SimMatchupResult",
     "SimulatorAdapter",
     "StarterAgent",
     "Terminal",
     "TranspositionTable",
+    "evaluate",
+    "evaluate_horizon",
+    "horizon_days",
+    "horizon_remaining",
+    "initial_state",
     "play_episode",
+    "play_sim_episode",
     "run_matchup",
+    "run_sim_matchup",
     "state_key",
 ]

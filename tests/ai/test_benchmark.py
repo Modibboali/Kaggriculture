@@ -14,6 +14,7 @@ def test_benchmark_rates_are_positive() -> None:
     assert results["action_generations_per_sec"] > 0
     assert results["state_hashes_per_sec"] > 0
     assert results["evaluations_per_sec"] > 0
+    assert results["horizon_evaluations_per_sec"] > 0
 
     # MCTS throughput: simulations/sec and env transitions/sec must be > 0.
     assert results["mcts_simulations_per_sec"] > 0
