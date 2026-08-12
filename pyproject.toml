@@ -6,7 +6,7 @@ files = ["agent", "tests"]
 # The official environment and cloudpickle ship without type stubs; the
 # diagnostics package only touches them through a thin, runtime-probed API.
 [[tool.mypy.overrides]]
-module = ["kaggle_environments", "kaggle_environments.*", "cloudpickle", "pytest"]
+module = ["kaggle_environments", "kaggle_environments.*", "cloudpickle", "pytest", "psutil"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

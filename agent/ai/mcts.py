@@ -32,13 +32,22 @@ S = TypeVar("S")
 
 
 class MCTSConfig:
-    """Search budget and exploration parameters (plain data)."""
+    """Search budget and exploration parameters (plain data).
+
+    ``iterations`` is the total simulation budget for one search. ``workers``
+    controls the execution strategy: ``1`` runs the canonical sequential MCTS
+    in-process; ``>1`` runs root-parallel MCTS across that many worker
+    processes (see :mod:`agent.ai.parallel_mcts`). The sequential
+    :class:`MCTS` ignores ``workers`` entirely, so this field never changes
+    the mathematical behaviour of the reference implementation.
+    """
 
     __slots__ = (
         "iterations",
         "exploration_constant",
         "max_simulation_steps",
         "seed",
+        "workers",
     )
 
     def __init__(
@@ -48,11 +57,13 @@ class MCTSConfig:
         exploration_constant: float = 1.41,
         max_simulation_steps: int = 30,
         seed: int = 0,
+        workers: int = 1,
     ) -> None:
         self.iterations = iterations
         self.exploration_constant = exploration_constant
         self.max_simulation_steps = max_simulation_steps
         self.seed = seed
+        self.workers = workers
 
 
 class MCTSNode(Generic[S]):

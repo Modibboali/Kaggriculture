@@ -20,6 +20,7 @@ from ..state import GameState
 from .action_generator import ActionGenerator
 from .evaluation import EvaluationConfig, Evaluator, HorizonAwareEvaluator
 from .mcts import MCTS, MCTSConfig
+from .parallel_mcts import ParallelMCTS
 from .rollout import HeuristicRolloutPolicy, RandomRolloutPolicy
 from .search_state import SearchState
 from .simulator_adapter import SimulatorAdapter
@@ -81,16 +82,34 @@ class MCTSAgent:
         mcts_config = mcts_config if mcts_config is not None else MCTSConfig(seed=seed)
         if rollout is None:
             rollout = HeuristicRolloutPolicy(self._components.generator)
-        self._mcts = MCTS(
-            mcts_config,
-            transition=self._components.adapter.transition,
-            generate=self._components.generator.generate,
-            is_terminal=self._components.terminal.is_terminal,
-            terminal_value=self._components.terminal.value,
-            evaluate=self._components.evaluator.evaluate,
-            rollout=rollout.choose,
-            rng=random.Random(mcts_config.seed),
-        )
+        self._mcts: MCTS[SearchState] | ParallelMCTS[SearchState]
+        if mcts_config.workers > 1:
+            # Root-parallel execution strategy (workers > 1). The model is
+            # byte-for-byte the same as the sequential path; only the search
+            # execution differs. workers == 1 keeps the canonical sequential
+            # MCTS unchanged.
+            self._mcts = ParallelMCTS(
+                mcts_config,
+                transition=self._components.adapter.transition,
+                generate=self._components.generator.generate,
+                is_terminal=self._components.terminal.is_terminal,
+                terminal_value=self._components.terminal.value,
+                evaluate=self._components.evaluator.evaluate,
+                rollout=rollout.choose,
+                rng=random.Random(mcts_config.seed),
+                transition_counter=self._components.adapter,
+            )
+        else:
+            self._mcts = MCTS(
+                mcts_config,
+                transition=self._components.adapter.transition,
+                generate=self._components.generator.generate,
+                is_terminal=self._components.terminal.is_terminal,
+                terminal_value=self._components.terminal.value,
+                evaluate=self._components.evaluator.evaluate,
+                rollout=rollout.choose,
+                rng=random.Random(mcts_config.seed),
+            )
         self._iterations = mcts_config.iterations
         self._search_time = 0.0
         self._actions_chosen = 0
@@ -102,11 +121,19 @@ class MCTSAgent:
 
     @property
     def stats(self) -> dict[str, float]:
-        """Cumulative search statistics (time, transitions, searches)."""
+        """Cumulative search statistics (time, transitions, searches).
+
+        For parallel search the simulator transitions happen in the worker
+        processes, so they are summed from the workers via
+        :attr:`ParallelMCTS.transitions` rather than the caller-side adapter.
+        """
+        transitions = float(self._components.adapter.transitions)
+        if isinstance(self._mcts, ParallelMCTS):
+            transitions += float(self._mcts.transitions)
         return {
             "searches": float(self._actions_chosen),
             "search_time": self._search_time,
-            "simulator_transitions": float(self._components.adapter.transitions),
+            "simulator_transitions": transitions,
         }
 
     def select(self, game: GameState, player: int) -> TurnAction:

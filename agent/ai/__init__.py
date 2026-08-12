@@ -23,6 +23,20 @@ from .evaluation import (
 )
 from .experiment import EpisodeResult, MatchupResult, play_episode, run_matchup
 from .mcts import MCTS, MCTSConfig, MCTSNode, NoTranspositionTable, TranspositionTable
+from .parallel_mcts import (
+    ParallelMCTS,
+    ParallelSearchResult,
+    RootStat,
+    WorkerResult,
+    WorkerTask,
+    aggregate_root_stats,
+    canonical_action_key,
+    run_mcts_worker,
+    select_best_action_from_stats,
+    select_best_action_key,
+    split_budget,
+    worker_seed,
+)
 from .phase import GamePhase, longest_crop_cash_days, phase_for, phase_of, shortest_crop_cash_days
 from .rollout import (
     CashConversionRolloutPolicy,
@@ -58,9 +72,12 @@ __all__ = [
     "MCTSAgent",
     "MatchupResult",
     "NoTranspositionTable",
+    "ParallelMCTS",
+    "ParallelSearchResult",
     "RandomAgent",
     "RandomRolloutPolicy",
     "RolloutPolicy",
+    "RootStat",
     "SearchState",
     "SimEpisodeResult",
     "SimMatchupResult",
@@ -68,6 +85,10 @@ __all__ = [
     "StarterAgent",
     "Terminal",
     "TranspositionTable",
+    "WorkerResult",
+    "WorkerTask",
+    "aggregate_root_stats",
+    "canonical_action_key",
     "evaluate",
     "evaluate_horizon",
     "farmer_type",
@@ -80,7 +101,12 @@ __all__ = [
     "play_episode",
     "play_sim_episode",
     "run_matchup",
+    "run_mcts_worker",
     "run_sim_matchup",
+    "select_best_action_from_stats",
+    "select_best_action_key",
     "shortest_crop_cash_days",
+    "split_budget",
     "state_key",
+    "worker_seed",
 ]

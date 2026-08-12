@@ -40,6 +40,7 @@ def make_mcts(
     eval_config: EvaluationConfig | None = None,
     seed: int = 1,
     mode: str = "A",
+    workers: int = 1,
 ) -> MCTSAgent:
     """Build an MCTS agent.
 
@@ -51,11 +52,21 @@ def make_mcts(
         C  phase    : all actions, phase-prioritised ordering, heuristic rollout
         D  phase+realizability : prioritised AND unrealisable actions dropped
         E  cashconversion: D + CashConversionRolloutPolicy
+
+    ``workers`` > 1 selects the root-parallel execution strategy (task:
+    multi-vCPU parallel MCTS); workers == 1 keeps the canonical sequential
+    MCTS. ``iterations`` is always the *total* simulation budget regardless of
+    worker count.
     """
     from .action_priority import ActionPriorityModel
     from .rollout import CashConversionRolloutPolicy
 
-    mcts_config = MCTSConfig(iterations=iterations, max_simulation_steps=12, seed=seed)
+    mcts_config = MCTSConfig(
+        iterations=iterations,
+        max_simulation_steps=12,
+        seed=seed,
+        workers=workers,
+    )
     evaluator: Evaluator
     if kind == "new":
         evaluator = HorizonAwareEvaluator(config, eval_config)
@@ -257,6 +268,41 @@ _CATEGORY: dict[str, set[object]] = {
 }
 
 
+def cmd_parallel(args: argparse.Namespace) -> None:
+    """Sequential vs root-parallel MCTS quality comparison (task: parallel MCTS).
+
+    Plays the SAME total simulation budget with workers=1 (canonical
+    sequential) and workers=N (root-parallel) against the starter, so the only
+    variable is the execution strategy. Root-parallel may pick different
+    actions (independent trees) — the point is to confirm throughput scales and
+    quality does not regress, not that the policies are identical.
+    """
+    config = GameConfig(episode_steps=args.days * _BASE)
+    mode = args.mode
+    print(
+        f"Parallel quality: horizon={args.days}d, games={args.games}, "
+        f"iters={args.iterations} (total, each), mode={mode}, vs starter"
+    )
+    print(f"{'config':<28}{'win%':>6}{'mean_r0':>9}{'med_r0':>9}{'sd_r0':>8}{'steps':>6}")
+    for workers in args.workers:
+        agent = make_mcts(
+            "new", config, iterations=args.iterations, mode=mode, workers=workers
+        )
+        result = run_sim_matchup(
+            agent,
+            StarterAgent(config=config),
+            name=f"w{workers}_vs_starter",
+            games=args.games,
+            config=config,
+        )
+        label = "sequential" if workers == 1 else f"parallel w={workers}"
+        print(
+            f"{label:<28}{result.win_rate0 * 100:>6.0f}"
+            f"{result.mean_reward0:>9.1f}{result.median_reward0:>9.1f}"
+            f"{result.std_reward0:>8.1f}{result.mean_steps:>6.0f}"
+        )
+
+
 def cmd_instrument(args: argparse.Namespace) -> None:
     """Profile the generated action space by category across horizons."""
     from ..actions import ActionType
@@ -332,6 +378,14 @@ def main() -> None:
     p = sub.add_parser("instrument")
     p.add_argument("--days", type=int, default=5)
     p.set_defaults(func=cmd_instrument)
+
+    p = sub.add_parser("parallel")
+    p.add_argument("--days", type=int, default=5)
+    p.add_argument("--games", type=int, default=10)
+    p.add_argument("--iterations", type=int, default=40)
+    p.add_argument("--mode", choices=("A", "B", "C", "D", "E"), default="E")
+    p.add_argument("--workers", nargs="+", type=int, default=[1, 4])
+    p.set_defaults(func=cmd_parallel)
 
     args = parser.parse_args()
     args.func(args)
