@@ -51,10 +51,11 @@ class _Components:
         self,
         config: GameConfig | None = None,
         evaluator: Evaluator | HorizonAwareEvaluator | None = None,
+        generator: ActionGenerator | None = None,
     ) -> None:
         self.config = config if config is not None else GameConfig()
         self.adapter = SimulatorAdapter()
-        self.generator = ActionGenerator(self.config)
+        self.generator = generator if generator is not None else ActionGenerator(self.config)
         self.evaluator = evaluator if evaluator is not None else Evaluator(self.config)
         self.terminal = Terminal(self.config)
 
@@ -70,9 +71,10 @@ class MCTSAgent:
         rollout: Any = None,
         evaluator: Evaluator | HorizonAwareEvaluator | None = None,
         eval_config: EvaluationConfig | None = None,
+        generator: ActionGenerator | None = None,
         seed: int = 0,
     ) -> None:
-        self._components = _Components(config, evaluator)
+        self._components = _Components(config, evaluator, generator)
         if evaluator is None and eval_config is not None:
             self._components.evaluator = HorizonAwareEvaluator(self._components.config, eval_config)
         self._components.adapter = SimulatorAdapter(count_transitions=True)

@@ -20,9 +20,9 @@ from collections.abc import Callable
 
 from ..actions import TurnAction
 from .action_generator import ActionGenerator
-from .evaluation import Evaluator, HorizonAwareEvaluator
+from .evaluation import EvaluationConfig, Evaluator, HorizonAwareEvaluator
 from .mcts import MCTS, MCTSConfig
-from .rollout import HeuristicRolloutPolicy
+from .rollout import CashConversionRolloutPolicy, HeuristicRolloutPolicy
 from .search_state import SearchState
 from .simulator_adapter import SimulatorAdapter
 from .terminal import Terminal
@@ -55,6 +55,7 @@ def benchmark(
     mcts_iterations: int = 200,
 ) -> dict[str, float]:
     from ..simulator import GameConfig
+    from .action_priority import ActionPriorityModel
 
     state = _state()
     game_config = GameConfig(board_size=10)
@@ -64,6 +65,13 @@ def benchmark(
     horizon_evaluator = HorizonAwareEvaluator(game_config)
     terminal = Terminal(game_config)
     rollout = HeuristicRolloutPolicy(generator)
+
+    # Task-12 components (phase model / priority / realizability / cash rollout).
+    eval_config = EvaluationConfig()
+    priority_model = ActionPriorityModel(game_config, eval_config)
+    cash_rollout = CashConversionRolloutPolicy(generator, priority_model)
+    rng = random.Random(0)
+    actions = generator.generate(state)
 
     results: dict[str, float] = {}
 
@@ -87,6 +95,34 @@ def benchmark(
 
     count, elapsed = _measure(gen, seconds)
     results["action_generations_per_sec"] = _rate(count, elapsed)
+
+    # Phase detection/sec.
+    def phase() -> None:
+        priority_model.phase(state)
+
+    count, elapsed = _measure(phase, seconds)
+    results["phase_detections_per_sec"] = _rate(count, elapsed)
+
+    # Priority ranking/sec (rank the generated candidate set).
+    def rank() -> None:
+        priority_model.rank(state, list(actions))
+
+    count, elapsed = _measure(rank, seconds)
+    results["action_priority_ranks_per_sec"] = _rate(count, elapsed)
+
+    # Realizability filter/sec.
+    def realize() -> None:
+        priority_model.filter_realizable(state, list(actions))
+
+    count, elapsed = _measure(realize, seconds)
+    results["realizability_filters_per_sec"] = _rate(count, elapsed)
+
+    # CashConversion rollout step/sec.
+    def cash() -> None:
+        cash_rollout.choose(state, rng)
+
+    count, elapsed = _measure(cash, seconds)
+    results["cashconversion_rollout_steps_per_sec"] = _rate(count, elapsed)
 
     # State hashing/sec.
     def hashing() -> None:
@@ -128,6 +164,23 @@ def benchmark(
     results["mcts_simulations_per_sec"] = _rate(iterations, search_time)
     results["mcts_env_transitions_per_sec"] = _rate(transitions_during, search_time)
     results["mcts_search_time_sec"] = search_time
+
+    # MCTS throughput with the CashConversion rollout (recommended mode E).
+    mcts_cash = MCTS(
+        MCTSConfig(iterations=iterations, max_simulation_steps=12, seed=0),
+        transition=adapter.transition,
+        generate=generator.generate,
+        is_terminal=terminal.is_terminal,
+        terminal_value=terminal.value,
+        evaluate=horizon_evaluator.evaluate,
+        rollout=cash_rollout.choose,
+        rng=rng,
+    )
+    start = time.perf_counter()
+    mcts_cash.search(state, 0)
+    search_time_cash = time.perf_counter() - start
+    results["mcts_cash_simulations_per_sec"] = _rate(iterations, search_time_cash)
+    results["mcts_cash_search_time_sec"] = search_time_cash
 
     return results
 

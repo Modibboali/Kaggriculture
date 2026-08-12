@@ -20,10 +20,13 @@ from __future__ import annotations
 import argparse
 from typing import Callable
 
+from ..actions import TurnAction
 from ..simulator import GameConfig
+from .action_generator import ActionGenerator
 from .agent import Agent, HeuristicAgent, MCTSAgent, RandomAgent, StarterAgent
 from .evaluation import EvaluationConfig, Evaluator, HorizonAwareEvaluator
 from .mcts import MCTSConfig
+from .rollout import HeuristicRolloutPolicy, RolloutPolicy
 from .sim_experiment import SimMatchupResult, run_sim_matchup
 
 _BASE = 24  # turns per day
@@ -36,23 +39,72 @@ def make_mcts(
     iterations: int,
     eval_config: EvaluationConfig | None = None,
     seed: int = 1,
+    mode: str = "A",
 ) -> MCTSAgent:
+    """Build an MCTS agent.
+
+    ``kind`` selects the evaluator; ``mode`` selects the action-space
+    configuration (task: action branching / rollout ablation):
+
+        A  current  : plain generator, heuristic rollout
+        B  farming  : generator filtered to crop/cash actions, heuristic rollout
+        C  phase    : all actions, phase-prioritised ordering, heuristic rollout
+        D  phase+realizability : prioritised AND unrealisable actions dropped
+        E  cashconversion: D + CashConversionRolloutPolicy
+    """
+    from .action_priority import ActionPriorityModel
+    from .rollout import CashConversionRolloutPolicy
+
     mcts_config = MCTSConfig(iterations=iterations, max_simulation_steps=12, seed=seed)
     evaluator: Evaluator
     if kind == "new":
         evaluator = HorizonAwareEvaluator(config, eval_config)
     elif kind == "old":
         evaluator = Evaluator(config)
-    elif kind == "no-crop":  # ablation C: horizon without crop realizability
+    elif kind == "no-crop":  # evaluator ablation C: no crop realizability
         evaluator = HorizonAwareEvaluator(config, EvaluationConfig(crop_realizability=False))
-    elif kind == "no-animal-worker":  # ablation D
+    elif kind == "no-animal-worker":  # evaluator ablation D
         evaluator = HorizonAwareEvaluator(
             config,
             EvaluationConfig(animal_horizon_value=False, worker_horizon_value=False),
         )
     else:
         raise ValueError(f"unknown evaluator kind: {kind}")
-    return MCTSAgent(mcts_config, config=config, evaluator=evaluator, seed=seed)
+
+    model = ActionPriorityModel(config, eval_config)
+    rollout: RolloutPolicy
+    if mode == "A":
+        generator = ActionGenerator(config)
+        rollout = HeuristicRolloutPolicy(generator)
+    elif mode == "B":
+        generator = ActionGenerator(
+            config, action_filter=ActionPriorityModel.farming_only_filter
+        )
+        rollout = HeuristicRolloutPolicy(generator)
+    elif mode == "C":
+        generator = ActionGenerator(config, priority_model=model)
+        rollout = HeuristicRolloutPolicy(generator)
+    elif mode == "D":
+        generator = ActionGenerator(
+            config, priority_model=model, action_filter=model.filter_realizable
+        )
+        rollout = HeuristicRolloutPolicy(generator)
+    elif mode == "E":
+        generator = ActionGenerator(
+            config, priority_model=model, action_filter=model.filter_realizable
+        )
+        rollout = CashConversionRolloutPolicy(generator, model)
+    else:
+        raise ValueError(f"unknown mode: {mode}")
+
+    return MCTSAgent(
+        mcts_config,
+        config=config,
+        evaluator=evaluator,
+        generator=generator,
+        rollout=rollout,
+        seed=seed,
+    )
 
 
 def _opponent(name: str, config: GameConfig) -> Agent:
@@ -118,12 +170,15 @@ def cmd_matchups(args: argparse.Namespace) -> None:
 
 def cmd_sweep(args: argparse.Namespace) -> None:
     config = GameConfig(episode_steps=args.days * _BASE)
-    print(f"Budget sweep: horizon={args.days}d, games={args.games}, vs starter")
+    print(
+        f"Budget sweep: horizon={args.days}d, games={args.games}, mode={args.mode}, "
+        f"vs starter"
+    )
     print(f"{'iters':>6} {'win%':>6} {'mean_r0':>9} {'sims/s':>8} {'trans/s':>9} {'latency_ms':>10}")
     for iterations in (25, 50, 100, 250, 500):
-        agent = make_mcts("new", config, iterations=iterations)
+        agent = make_mcts("new", config, iterations=iterations, mode=args.mode)
         result = run_sim_matchup(
-            agent, StarterAgent(config=config), name=f"sweep_{iterations}",
+            agent, StarterAgent(config=config), name=f"sweep_{args.mode}_{iterations}",
             games=args.games, config=config,
         )
         sims = result.total_searches * iterations
@@ -156,6 +211,88 @@ def cmd_ablation(args: argparse.Namespace) -> None:
         )
 
 
+def _mode_run(
+    mode: str,
+    opponent: str,
+    config: GameConfig,
+    *,
+    games: int,
+    iterations: int,
+) -> SimMatchupResult:
+    agent = make_mcts("new", config, iterations=iterations, mode=mode)
+    return run_sim_matchup(
+        agent, _opponent(opponent, config), name=f"{mode}_vs_{opponent}",
+        games=games, config=config,
+    )
+
+
+def cmd_modes(args: argparse.Namespace) -> None:
+    """Action-space ablation (modes A-E) against a chosen opponent."""
+    config = GameConfig(episode_steps=args.days * _BASE)
+    print(
+        f"Modes A-E: horizon={args.days}d, games={args.games}, "
+        f"iters={args.iterations}, opponent={args.opponent}"
+    )
+    print(f"{'mode':<22}{'win%':>6}{'mean_r0':>9}{'med_r0':>9}{'sd_r0':>8}{'mean_r1':>9}{'steps':>6}")
+    for mode in ("A", "B", "C", "D", "E"):
+        result = _mode_run(mode, args.opponent, config, games=args.games, iterations=args.iterations)
+        print(
+            f"{mode:<22}{result.win_rate0 * 100:>6.0f}"
+            f"{result.mean_reward0:>9.1f}{result.median_reward0:>9.1f}"
+            f"{result.std_reward0:>8.1f}{result.mean_reward1:>9.1f}{result.mean_steps:>6.0f}"
+        )
+
+
+# Action-type categories for instrumentation.
+_CATEGORY: dict[str, set[object]] = {
+    "farming": {"PLANT", "WATER", "HARVEST", "FERTILIZE", "DIG"},
+    "movement": {"NORTH", "SOUTH", "EAST", "WEST"},
+    "market": {"SELL", "BUY_SEED", "BUY_PRODUCT"},
+    "land": {"BUY_LAND"},
+    "building": {"BUILD_COOP", "BUILD_PASTURE"},
+    "animal": {"PLACE", "FEED", "CARE", "COLLECT_FERTILIZER", "BUY_ANIMAL"},
+    "worker": {"HIRE"},
+    "inventory": {"PICKUP", "DROP"},
+    "pass": {"PASS"},
+}
+
+
+def cmd_instrument(args: argparse.Namespace) -> None:
+    """Profile the generated action space by category across horizons."""
+    from ..actions import ActionType
+    from ..state import GameState
+    from .action_priority import farmer_type
+    from .search_state import SearchState
+    from .sim_experiment import initial_state
+    from ..simulator import Simulator
+
+    def profile(config: GameConfig, label: str, day: int) -> None:
+        state: GameState = initial_state(config)
+        sim = Simulator(config)
+        for _ in range(day * config.turns_per_day):
+            state = sim.apply(state, (TurnAction(), TurnAction()))
+        gen = ActionGenerator(config)
+        actions = gen.generate(SearchState(state))
+        counts: dict[str, int] = {}
+        for action in actions:
+            at = farmer_type(action).label
+            for cat, types in _CATEGORY.items():
+                if at in types:
+                    counts[cat] = counts.get(cat, 0) + 1
+                    break
+            else:
+                counts[at] = counts.get(at, 0) + 1
+        total = len(actions)
+        cats = " ".join(f"{k}={v}" for k, v in sorted(counts.items()))
+        print(f"  [{label}] day={day} total={total} :: {cats}")
+
+    print(f"Action-space profile ({args.days}d horizon, {args.days * _BASE} steps):")
+    config = GameConfig(episode_steps=args.days * _BASE)
+    horizon_days = args.days
+    for day in sorted(set([0, max(0, horizon_days // 2), max(0, horizon_days - 1)])):
+        profile(config, "early" if day == 0 else ("mid" if day < horizon_days - 1 else "late"), day)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Horizon-aware MCTS experiments")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -176,6 +313,7 @@ def main() -> None:
     p = sub.add_parser("sweep")
     p.add_argument("--days", type=int, default=3)
     p.add_argument("--games", type=int, default=5)
+    p.add_argument("--mode", choices=("A", "B", "C", "D", "E"), default="A")
     p.set_defaults(func=cmd_sweep)
 
     p = sub.add_parser("ablation")
@@ -183,6 +321,17 @@ def main() -> None:
     p.add_argument("--games", type=int, default=10)
     p.add_argument("--iterations", type=int, default=12)
     p.set_defaults(func=cmd_ablation)
+
+    p = sub.add_parser("modes")
+    p.add_argument("--days", type=int, default=5)
+    p.add_argument("--games", type=int, default=100)
+    p.add_argument("--iterations", type=int, default=12)
+    p.add_argument("--opponent", choices=("random", "starter", "heuristic"), default="starter")
+    p.set_defaults(func=cmd_modes)
+
+    p = sub.add_parser("instrument")
+    p.add_argument("--days", type=int, default=5)
+    p.set_defaults(func=cmd_instrument)
 
     args = parser.parse_args()
     args.func(args)

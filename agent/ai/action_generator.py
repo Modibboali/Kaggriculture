@@ -14,6 +14,9 @@ does not combine both in one turn). Generation is deterministic (no RNG).
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Protocol
+
 from ..actions import (
     BuyAnimalAction,
     BuyLandAction,
@@ -84,12 +87,31 @@ def _dedupe(actions: list[TurnAction]) -> list[TurnAction]:
     return result
 
 
+class _PriorityModel(Protocol):
+    """Ordering interface consumed by :class:`ActionGenerator` (implemented by
+    ``ActionPriorityModel``; typed as a protocol to avoid a circular import)."""
+
+    def rank(self, state: SearchState, actions: list[TurnAction]) -> tuple[TurnAction, ...]: ...
+
+
 class ActionGenerator:
     """Generates legal, meaningful candidate actions for the acting player."""
 
-    def __init__(self, config: GameConfig, *, include_movement: bool = True) -> None:
+    def __init__(
+        self,
+        config: GameConfig,
+        *,
+        include_movement: bool = True,
+        priority_model: _PriorityModel | None = None,
+        action_filter: Callable[[SearchState, list[TurnAction]], tuple[TurnAction, ...]] | None = None,
+    ) -> None:
         self._config = config
         self._include_movement = include_movement
+        # Optional phase-aware prioritisation / filtering (task: action-space
+        # ablation). When set, ``generate`` returns actions ordered so MCTS
+        # expands the most promising first, and/or restricted to a subset.
+        self._priority_model = priority_model
+        self._action_filter = action_filter
 
     def generate(self, state: SearchState) -> tuple[TurnAction, ...]:
         game = state.game
@@ -185,4 +207,9 @@ class ActionGenerator:
             if money >= self._config.animals[animal].cost:
                 actions.append(TurnAction(market_actions=(BuyAnimalAction(animal=animal, quantity=1),)))
 
-        return tuple(_dedupe(actions))
+        candidates = _dedupe(actions)
+        if self._action_filter is not None:
+            candidates = list(self._action_filter(state, candidates))
+        if self._priority_model is not None:
+            return self._priority_model.rank(state, candidates)
+        return tuple(candidates)

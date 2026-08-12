@@ -20,6 +20,38 @@ from .action_generator import ActionGenerator
 from .search_state import SearchState
 
 
+class CashConversionRolloutPolicy:
+    """Deterministic rollout that follows the cash-conversion action chain.
+
+    Every generated action is scored by the phase-aware
+    :class:`~agent.ai.action_priority.ActionPriorityModel` and the top scorer is
+    chosen (ties broken by the seeded rng). The chain
+    ``BUY_SEED -> PLANT -> WATER -> HARVEST -> SELL`` emerges from the model:
+    SELL tops the ranking when inventory exists, HARVEST when a crop/animal has
+    yield, WATER when a planted crop is unwatered, PLANT when an empty tile,
+    seed and horizon fit, and BUY_SEED when money and horizon fit. It is *not*
+    wheat-specific — crop selection uses the full ``config.crops`` table and
+    current market prices.
+    """
+
+    def __init__(self, generator: ActionGenerator, priority_model: object) -> None:
+        self._generator = generator
+        self._priority_model = priority_model
+
+    def choose(self, state: SearchState, rng: random.Random) -> TurnAction:
+        actions = self._generator.generate(state)
+        best_score = float("-inf")
+        best: list[TurnAction] = []
+        for action in actions:
+            score = self._priority_model.priority(state, action)  # type: ignore[attr-defined]
+            if score > best_score:
+                best_score = score
+                best = [action]
+            elif score == best_score:
+                best.append(action)
+        return rng.choice(best)
+
+
 class RolloutPolicy(Protocol):
     """Chooses the next action during a rollout."""
 

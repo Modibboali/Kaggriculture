@@ -10,6 +10,7 @@ experiment harness, which plays real episodes).
 from __future__ import annotations
 
 from .action_generator import ActionGenerator
+from .action_priority import ActionPriorityModel, farmer_type
 from .agent import HeuristicAgent, MCTSAgent, RandomAgent, StarterAgent
 from .evaluation import (
     EvaluationConfig,
@@ -22,7 +23,13 @@ from .evaluation import (
 )
 from .experiment import EpisodeResult, MatchupResult, play_episode, run_matchup
 from .mcts import MCTS, MCTSConfig, MCTSNode, NoTranspositionTable, TranspositionTable
-from .rollout import HeuristicRolloutPolicy, RandomRolloutPolicy, RolloutPolicy
+from .phase import GamePhase, longest_crop_cash_days, phase_for, phase_of, shortest_crop_cash_days
+from .rollout import (
+    CashConversionRolloutPolicy,
+    HeuristicRolloutPolicy,
+    RandomRolloutPolicy,
+    RolloutPolicy,
+)
 from .search_state import SearchState, state_key
 from .sim_experiment import (
     SimEpisodeResult,
@@ -36,9 +43,12 @@ from .terminal import Terminal
 
 __all__ = [
     "ActionGenerator",
+    "ActionPriorityModel",
+    "CashConversionRolloutPolicy",
     "EpisodeResult",
     "EvaluationConfig",
     "Evaluator",
+    "GamePhase",
     "HeuristicAgent",
     "HeuristicRolloutPolicy",
     "HorizonAwareEvaluator",
@@ -60,12 +70,17 @@ __all__ = [
     "TranspositionTable",
     "evaluate",
     "evaluate_horizon",
+    "farmer_type",
     "horizon_days",
     "horizon_remaining",
     "initial_state",
+    "longest_crop_cash_days",
+    "phase_for",
+    "phase_of",
     "play_episode",
     "play_sim_episode",
     "run_matchup",
     "run_sim_matchup",
+    "shortest_crop_cash_days",
     "state_key",
 ]
