@@ -1,0 +1,97 @@
+{
+  "examples": 400,
+  "trajectories": 50,
+  "cash": {
+    "n": 400.0,
+    "mean": 720.6175,
+    "median": 1.0,
+    "min": 0.0,
+    "max": 3018.0,
+    "std": 1162.0363747291863
+  },
+  "liquid_inventory_value": {
+    "n": 400.0,
+    "mean": 240.48,
+    "median": 0.0,
+    "min": 0.0,
+    "max": 2900.0,
+    "std": 533.3169691656173
+  },
+  "total_assets": {
+    "n": 400.0,
+    "mean": 1875.425,
+    "median": 2059.5,
+    "min": 44.0,
+    "max": 3953.5,
+    "std": 1295.5896420645697
+  },
+  "unrealized_crop_value": {
+    "n": 400.0,
+    "mean": 19.2275,
+    "median": 0.0,
+    "min": 0.0,
+    "max": 579.5,
+    "std": 65.48596791488998
+  },
+  "unrealized_animal_value": {
+    "n": 400.0,
+    "mean": 31.0,
+    "median": 0.0,
+    "min": 0.0,
+    "max": 800.0,
+    "std": 123.44634461983878
+  },
+  "planted_crops_per_state": {
+    "n": 400.0,
+    "mean": 0.4825,
+    "median": 0.0,
+    "min": 0.0,
+    "max": 11.0,
+    "std": 1.2568586833848903
+  },
+  "candidates_per_example": {
+    "n": 400.0,
+    "mean": 8.7075,
+    "median": 6.0,
+    "min": 3.0,
+    "max": 23.0,
+    "std": 5.262313535888944
+  },
+  "target_entropy": {
+    "n": 400.0,
+    "mean": 1.7900294597446917,
+    "median": 1.7480671405792236,
+    "min": 0.940447986125946,
+    "max": 2.3025851249694824,
+    "std": 0.40988902637968117
+  },
+  "horizon": {
+    "n": 400.0,
+    "mean": 293.75,
+    "median": 236.0,
+    "min": 16.0,
+    "max": 720.0,
+    "std": 223.20447464152684
+  },
+  "phases": {
+    "cash_conversion": 104,
+    "development": 170,
+    "production": 126
+  },
+  "sources": {
+    "mode_e": 64,
+    "investment": 48,
+    "starter": 48,
+    "animal": 48,
+    "random": 48,
+    "market": 48,
+    "farming": 48,
+    "inventory_holding": 48
+  },
+  "economic_buckets": {
+    "balanced": 222,
+    "low_cash_high_realizable": 96,
+    "high_cash_low_assets": 54,
+    "low_cash_high_liquid": 28
+  }
+}

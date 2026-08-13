@@ -1,0 +1,29 @@
+{
+  "mode_e": {
+    "win_rate": 1.0,
+    "mean_reward": 3000.0,
+    "opponent_reward": 2996.3333333333335,
+    "median_reward": 3000.0,
+    "std_reward": 0.0,
+    "decision_latency_ms": 0.0,
+    "games": 3.0
+  },
+  "starter": {
+    "win_rate": 1.0,
+    "mean_reward": 3000.0,
+    "opponent_reward": 1996.0,
+    "median_reward": 3000.0,
+    "std_reward": 0.0,
+    "decision_latency_ms": 0.0,
+    "games": 3.0
+  },
+  "random": {
+    "win_rate": 1.0,
+    "mean_reward": 3000.0,
+    "opponent_reward": 0.6666666666666666,
+    "median_reward": 3000.0,
+    "std_reward": 0.0,
+    "decision_latency_ms": 0.0,
+    "games": 3.0
+  }
+}

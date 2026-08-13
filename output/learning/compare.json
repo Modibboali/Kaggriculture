@@ -1,0 +1,51 @@
+[
+  {
+    "name": "learned_greedy_vs_starter",
+    "win_rate0": 0.0,
+    "mean_reward0": 0.0,
+    "mean_reward1": 5.0,
+    "wall_seconds": 12.472912500030361
+  },
+  {
+    "name": "learned_greedy_vs_random",
+    "win_rate0": 0.0,
+    "mean_reward0": 0.0,
+    "mean_reward1": 0.0,
+    "wall_seconds": 13.004580799955875
+  },
+  {
+    "name": "learned_mcts_vs_starter",
+    "win_rate0": 1.0,
+    "mean_reward0": 2594.4,
+    "mean_reward1": 2.8,
+    "wall_seconds": 39918.21932480007
+  },
+  {
+    "name": "learned_mcts_vs_random",
+    "win_rate0": 1.0,
+    "mean_reward0": 2691.4,
+    "mean_reward1": 0.0,
+    "wall_seconds": 3278.8088343999116
+  },
+  {
+    "name": "mode_e_vs_starter",
+    "win_rate0": 1.0,
+    "mean_reward0": 2894.2,
+    "mean_reward1": 5.4,
+    "wall_seconds": 1472.365507600014
+  },
+  {
+    "name": "mode_e_vs_random",
+    "win_rate0": 1.0,
+    "mean_reward0": 2650.0,
+    "mean_reward1": 0.0,
+    "wall_seconds": 1205.6128009000095
+  },
+  {
+    "name": "learned_mcts_vs_mode_e",
+    "win_rate0": 0.0,
+    "mean_reward0": 1666.6,
+    "mean_reward1": 2784.4,
+    "wall_seconds": 21575.03853420005
+  }
+]
