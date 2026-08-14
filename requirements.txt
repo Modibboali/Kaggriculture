@@ -1,0 +1,23 @@
+# Kaggriculture — runtime dependencies
+#
+# Verified against the project's working virtual environment (Python 3.11).
+# These are the only third-party packages imported by the codebase:
+#   numpy, torch, kaggle_environments (core) + psutil, cloudpickle (optional,
+#   used behind guarded imports for system info / diagnostics).
+#
+# PyTorch is used CPU-only in this project. Install it from the CPU wheel
+# index (the `+cpu` build) with:
+#
+#   pip install torch==2.13.0+cpu --index-url https://download.pytorch.org/whl/cpu
+#
+# or, without pinning the local build:
+#
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+numpy==2.4.6
+torch==2.13.0+cpu
+kaggle-environments==1.32.5
+
+# Optional: system-info / benchmark helpers (guarded imports, safe to omit)
+psutil==7.2.2
+cloudpickle==3.1.2
